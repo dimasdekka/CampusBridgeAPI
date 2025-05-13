@@ -1,31 +1,35 @@
-// (routes) - auth.ts
 import { Request, Response, Router } from 'express';
 import { StreamChat } from 'stream-chat';
-import { hashSync } from 'bcrypt';
+import { hashSync, compareSync } from 'bcrypt'; // 🧂 Kita gunakan hashSync dan compareSync dari bcrypt
 import { USERS, UserRole } from '../models/user';
 import dotenv from 'dotenv';
 import { sign } from 'jsonwebtoken';
-// Load environment variables
+
+//  Memuat variabel lingkungan dari file .env
 dotenv.config();
 
 const router = Router();
 
+//  Ambil konfigurasi penting dari .env
 const SALT = process.env.SALT as string;
 const streamApiKey = process.env.STREAM_API_KEY;
 const streamApiSecret = process.env.STREAM_API_SECRET;
 
+//  Cek apakah API key dan secret sudah disiapkan
 if (!streamApiKey || !streamApiSecret) {
   throw new Error(
     'STREAM_API_KEY and STREAM_API_SECRET must be defined in environment variables'
   );
 }
 
+//  Inisialisasi koneksi dengan Stream Chat
 const client = StreamChat.getInstance(streamApiKey, streamApiSecret);
 
-// Register endpoint
+//  Endpoint untuk registrasi mahasiswa baru
 router.post('/register', async (req: Request, res: Response): Promise<any> => {
   const { email, password, name, department } = req.body;
 
+  //  Validasi data input
   if (!email || !password) {
     return res.status(400).json({
       message: 'Email and password are required.',
@@ -38,6 +42,7 @@ router.post('/register', async (req: Request, res: Response): Promise<any> => {
     });
   }
 
+  //  Cek apakah user sudah ada
   const existingUser = USERS.find((user) => user.email === email);
 
   if (existingUser) {
@@ -47,25 +52,29 @@ router.post('/register', async (req: Request, res: Response): Promise<any> => {
   }
 
   try {
+    //  Hash password sebelum disimpan
     const hashed_password = hashSync(password, SALT);
-    const id = Math.random().toString(36).substring(2, 9);
+    const id = Math.random().toString(36).substring(2, 9); // Generate ID random
+
     const user = {
       id,
       email,
       name,
       department,
       hashed_password,
-      role: UserRole.Student,
+      role: UserRole.Student, //  Default-nya sebagai mahasiswa
     };
-    USERS.push(user);
 
+    USERS.push(user); //  Simpan user ke memory (mock database)
+
+    //  Sinkronisasi user ke Stream
     await client.upsertUser({
       id,
       email,
       name: name || email,
     });
 
-    const token = client.createToken(id);
+    const token = client.createToken(id); // 🪙 Token untuk Stream Chat
 
     return res.json({
       token,
@@ -84,20 +93,24 @@ router.post('/register', async (req: Request, res: Response): Promise<any> => {
   }
 });
 
-// Login endpoint
+//  Endpoint login
 router.post('/login', async (req: Request, res: Response): Promise<any> => {
   const { email, password } = req.body;
-  const user = USERS.find((user) => user.email === email);
-  const hashed_password = hashSync(password, SALT);
 
-  if (!user || user.hashed_password !== hashed_password) {
+  //  Cari user berdasarkan email
+  const user = USERS.find((user) => user.email === email);
+
+  //  Kalau user tidak ditemukan atau password salah, tolak akses
+  if (!user || !compareSync(password, user.hashed_password)) {
     return res.status(400).json({
       message: 'Invalid credentials.',
     });
   }
 
+  //  Buat token untuk Stream Chat
   const token = client.createToken(user.id);
 
+  //  Buat token JWT untuk otentikasi umum
   const jwt = sign({ userId: user.id }, process.env.JWT_SECRET!);
 
   return res.json({
@@ -113,25 +126,28 @@ router.post('/login', async (req: Request, res: Response): Promise<any> => {
   });
 });
 
-// Endpoint to create a professor user
+//  Endpoint khusus untuk membuat akun professor
 router.post(
   '/create-professor',
   async (req: Request, res: Response): Promise<any> => {
     const { email, password, name, department } = req.body;
 
+    //  Hash password
     const hashed_password = hashSync(password, SALT);
-    const id = Math.random().toString(36).substring(2, 9);
+    const id = Math.random().toString(36).substring(2, 9); //  ID random
+
     const user = {
       id,
       email,
       name,
       department,
       hashed_password,
-      role: UserRole.Professor,
+      role: UserRole.Professor, // 👨 Peran professor
     };
 
-    USERS.push(user);
+    USERS.push(user); //  Tambahkan ke list user lokal
 
+    //  Sinkronisasi ke Stream
     await client.upsertUser({
       id,
       email,
@@ -152,4 +168,4 @@ router.post(
   }
 );
 
-export default router;
+export default router; //  Jangan lupa ekspor router-nya
