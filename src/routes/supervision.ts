@@ -1,4 +1,3 @@
-// (routes) - supervision.ts
 import { Request, Response, Router } from 'express';
 import { USERS, UserRole } from '../models/user';
 import { SUPERVISIONS, SupervisionStatus } from '../models/supervision';
@@ -16,6 +15,12 @@ router.post(
   async (req: Request, res: Response): Promise<any> => {
     const { professorId, dateTime, topic, notes } = req.body;
     const user = req.user!;
+
+    if (!professorId || !dateTime || !topic) {
+      return res.status(400).json({
+        message: 'Professor ID, dateTime, and topic are required.',
+      });
+    }
 
     if (user.role !== UserRole.Student) {
       return res
@@ -37,7 +42,7 @@ router.post(
       dateTime,
       status: SupervisionStatus.Pending,
       topic,
-      notes,
+      notes: notes || '',
     };
 
     SUPERVISIONS.push(supervision);
@@ -84,6 +89,10 @@ router.patch(
     const { status, feedback } = req.body;
     const user = req.user!;
 
+    if (!status) {
+      return res.status(400).json({ message: 'Status is required.' });
+    }
+
     const supervision = SUPERVISIONS.find((s) => s.id === id);
     if (!supervision) {
       return res.status(404).json({ message: 'Supervision meeting not found' });
@@ -122,6 +131,12 @@ router.post(
     const { progressDetails, attachmentLinks } = req.body;
     const user = req.user!;
 
+    if (!progressDetails) {
+      return res.status(400).json({
+        message: 'Progress details are required.',
+      });
+    }
+
     const supervision = SUPERVISIONS.find((s) => s.id === id);
     if (!supervision) {
       return res.status(404).json({ message: 'Supervision meeting not found' });
@@ -133,9 +148,11 @@ router.post(
         .json({ message: 'Only the student can add progress updates' });
     }
 
-    const progressUpdate = `Progress Update: ${progressDetails}\nAttachments: ${
-      attachmentLinks?.join(', ') || 'None'
-    }`;
+    const sanitizedAttachments = Array.isArray(attachmentLinks)
+      ? attachmentLinks.join(', ')
+      : 'None';
+
+    const progressUpdate = `Progress Update: ${progressDetails}\nAttachments: ${sanitizedAttachments}`;
 
     supervision.notes = supervision.notes
       ? `${supervision.notes}\n\n${progressUpdate}`

@@ -10,7 +10,7 @@ dotenv.config();
 
 const router = Router();
 
-const SALT = parseInt(process.env.SALT || '10', 10); // Ensure SALT is a valid number
+const SALT = process.env.SALT as string;
 const streamApiKey = process.env.STREAM_API_KEY;
 const streamApiSecret = process.env.STREAM_API_SECRET;
 
