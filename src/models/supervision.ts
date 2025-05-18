@@ -1,4 +1,3 @@
-// (models) - supervision.ts
 export enum SupervisionStatus {
   Pending = 'Pending',
   Confirmed = 'Confirmed',
@@ -16,12 +15,12 @@ export interface Supervision {
   notes?: string;
 }
 
-// Added only for testing purposes
+// ditambahkan untuk testing saja
 export const SUPERVISIONS: Supervision[] = [
   {
     id: '9j5ljw1dh',
-    studentId: '7z6ydcm',
-    professorId: '41m3lxk',
+    studentId: '221091750079',
+    professorId: '0000001',
     dateTime: '2025-03-11T13:15:29.364Z',
     status: SupervisionStatus.Pending,
     topic: 'Research methodology discussion',
@@ -29,8 +28,8 @@ export const SUPERVISIONS: Supervision[] = [
   },
   {
     id: '9j51ga1dh',
-    studentId: '7z6ydcm',
-    professorId: '41m3lxk',
+    studentId: '221091750079',
+    professorId: '0000001',
     dateTime: '2025-03-18T13:15:29.364Z',
     status: SupervisionStatus.Pending,
     topic: 'Data analysis review',

@@ -8,7 +8,7 @@ dotenv.config();
 
 const router = Router();
 
-// Create supervision meeting
+// Create supervision meet
 router.post(
   '/',
   authenticateToken,
@@ -36,7 +36,7 @@ router.post(
     }
 
     const supervision = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: Math.random().toString(36).substring(2, 9),
       studentId: user.id,
       professorId,
       dateTime,

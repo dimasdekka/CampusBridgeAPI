@@ -28,11 +28,11 @@ const client = StreamChat.getInstance(streamApiKey, streamApiSecret);
 
 // Register endpoint
 router.post('/register', async (req: Request, res: Response): Promise<any> => {
-  const { email, password } = req.body;
+  const { nim, email, password } = req.body;
 
-  if (!email || !password) {
+  if (!nim || !email || !password) {
     return res.status(400).json({
-      message: 'Email and password are required.',
+      message: 'NIM, email and password are required.',
     });
   }
 
@@ -42,7 +42,9 @@ router.post('/register', async (req: Request, res: Response): Promise<any> => {
     });
   }
 
-  const existingUser = USERS.find((user) => user.email === email);
+  const existingUser = USERS.find(
+    (user) => user.email === email || user.id === nim
+  );
 
   if (existingUser) {
     return res.status(400).json({
@@ -52,9 +54,8 @@ router.post('/register', async (req: Request, res: Response): Promise<any> => {
 
   try {
     const hashed_password = hashSync(password, SALT);
-    const id = Math.random().toString(36).substring(2, 9);
     const user = {
-      id,
+      id: nim,
       email,
       hashed_password,
       role: UserRole.Student,
@@ -62,15 +63,17 @@ router.post('/register', async (req: Request, res: Response): Promise<any> => {
     USERS.push(user);
 
     await client.upsertUser({
-      id,
+      id: nim,
       email,
       name: email,
     });
 
-    const token = client.createToken(id);
+    const token = client.createToken(nim);
+    const jwt = sign({ userId: user.id }, process.env.JWT_SECRET!); // <-- Tambahkan ini
 
     return res.json({
       token,
+      jwt,
       user: {
         id: user.id,
         email: user.email,
@@ -115,11 +118,11 @@ router.post('/login', async (req: Request, res: Response): Promise<any> => {
 router.post(
   '/create-professor',
   async (req: Request, res: Response): Promise<any> => {
-    const { email, password } = req.body;
+    const { nip, email, password } = req.body;
 
-    if (!email || !password) {
+    if (!nip || !email || !password) {
       return res.status(400).json({
-        message: 'Email and password are required.',
+        message: 'NIP, email and password are required.',
       });
     }
 
@@ -129,7 +132,9 @@ router.post(
       });
     }
 
-    const existingUser = USERS.find((user) => user.email === email);
+    const existingUser = USERS.find(
+      (user) => user.email === email || user.id === nip
+    );
 
     if (existingUser) {
       return res.status(400).json({
@@ -139,9 +144,8 @@ router.post(
 
     try {
       const hashed_password = hashSync(password, SALT);
-      const id = Math.random().toString(36).substring(2, 9);
       const user = {
-        id,
+        id: nip,
         email,
         hashed_password,
         role: UserRole.Professor,
@@ -150,7 +154,7 @@ router.post(
       USERS.push(user);
 
       await client.upsertUser({
-        id,
+        id: nip,
         email,
         name: email,
         role: UserRole.Professor,
