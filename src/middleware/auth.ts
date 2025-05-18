@@ -1,10 +1,9 @@
-// (middleware) - auth.ts
 import { Request, Response, NextFunction } from 'express';
 import { USERS } from '../models/user';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 
-// Load environment variables
+// Load env
 dotenv.config();
 
 const { JWT_SECRET } = process.env;

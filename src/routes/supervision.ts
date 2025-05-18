@@ -1,101 +1,92 @@
 import { Request, Response, Router } from 'express';
-import { USERS, UserRole } from '../models/user';
-import { SUPERVISIONS, SupervisionStatus } from '../models/supervision';
+import { UserRole } from '../models/user';
+import { SupervisionStatus } from '../models/supervision';
 import { authenticateToken } from '../middleware/auth';
+import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 const router = Router();
+const prisma = new PrismaClient();
 
-// Create supervision meet
+// Create supervision
 router.post(
   '/',
   authenticateToken,
   async (req: Request, res: Response): Promise<any> => {
-    const { professorId, dateTime, topic, notes } = req.body;
+    const { professorId, dateTime, notes } = req.body;
     const user = req.user!;
-
-    if (!professorId || !dateTime || !topic) {
-      return res.status(400).json({
-        message: 'Professor ID, dateTime, and topic are required.',
-      });
-    }
 
     if (user.role !== UserRole.Student) {
       return res
         .status(403)
-        .json({ message: 'Only students can schedule supervision meetings' });
+        .json({ message: 'Only student can schedule supervisions' });
     }
 
-    const professor = USERS.find(
-      (u) => u.id === professorId && u.role === UserRole.Professor
-    );
+    // Cek professor di database
+    const professor = await prisma.user.findFirst({
+      where: { id: professorId, role: UserRole.Professor },
+    });
     if (!professor) {
       return res.status(404).json({ message: 'Professor not found' });
     }
 
-    const supervision = {
-      id: Math.random().toString(36).substring(2, 9),
-      studentId: user.id,
-      professorId,
-      dateTime,
-      status: SupervisionStatus.Pending,
-      topic,
-      notes: notes || '',
-    };
+    const supervision = await prisma.supervision.create({
+      data: {
+        studentId: user.id,
+        professorId,
+        dateTime: new Date(dateTime),
+        status: SupervisionStatus.Pending,
+        notes,
+      },
+    });
 
-    SUPERVISIONS.push(supervision);
     return res.json(supervision);
   }
 );
 
-// Get supervision meetings
+// Get supervision
 router.get(
   '/',
   authenticateToken,
   async (req: Request, res: Response): Promise<any> => {
     const user = req.user!;
 
-    const userSupervisions = SUPERVISIONS.filter((supervision) =>
-      user.role === UserRole.Student
-        ? supervision.studentId === user.id
-        : supervision.professorId === user.id
-    );
-
-    const supervisionsWithStudentInfo = userSupervisions.map((supervision) => {
-      const student = USERS.find((user) => user.id === supervision.studentId);
-      const professor = USERS.find(
-        (user) => user.id === supervision.professorId
-      );
-      return {
-        ...supervision,
-        studentName: student?.name,
-        studentEmail: student?.email,
-        professorName: professor?.name,
-      };
+    const supervisions = await prisma.supervision.findMany({
+      where:
+        user.role === UserRole.Student
+          ? { studentId: user.id }
+          : { professorId: user.id },
+      include: {
+        student: true,
+      },
     });
 
-    return res.json(supervisionsWithStudentInfo);
+    // Sertakan email student
+    const supervisionWithStudentInfo = supervisions.map((supervision) => ({
+      ...supervision,
+      clientEmail: supervision.student?.email,
+    }));
+
+    return res.json(supervisionWithStudentInfo);
   }
 );
 
-// Update supervision status
+// Update supervisions status
 router.patch(
   '/:id',
   authenticateToken,
   async (req: Request, res: Response): Promise<any> => {
     const { id } = req.params;
-    const { status, feedback } = req.body;
+    const { status } = req.body;
     const user = req.user!;
 
-    if (!status) {
-      return res.status(400).json({ message: 'Status is required.' });
-    }
-
-    const supervision = SUPERVISIONS.find((s) => s.id === id);
+    const supervision = await prisma.supervision.findUnique({
+      where: { id },
+    });
     if (!supervision) {
-      return res.status(404).json({ message: 'Supervision meeting not found' });
+      return res.status(404).json({ message: 'supervision not found' });
     }
 
     if (
@@ -111,54 +102,12 @@ router.patch(
       return res.status(400).json({ message: 'Invalid status' });
     }
 
-    supervision.status = status;
-    if (feedback) {
-      supervision.notes = supervision.notes
-        ? `${supervision.notes}\n\nFeedback: ${feedback}`
-        : `Feedback: ${feedback}`;
-    }
+    const updated = await prisma.supervision.update({
+      where: { id },
+      data: { status },
+    });
 
-    return res.json(supervision);
-  }
-);
-
-// Add thesis progress
-router.post(
-  '/:id/progress',
-  authenticateToken,
-  async (req: Request, res: Response): Promise<any> => {
-    const { id } = req.params;
-    const { progressDetails, attachmentLinks } = req.body;
-    const user = req.user!;
-
-    if (!progressDetails) {
-      return res.status(400).json({
-        message: 'Progress details are required.',
-      });
-    }
-
-    const supervision = SUPERVISIONS.find((s) => s.id === id);
-    if (!supervision) {
-      return res.status(404).json({ message: 'Supervision meeting not found' });
-    }
-
-    if (user.role !== UserRole.Student || supervision.studentId !== user.id) {
-      return res
-        .status(403)
-        .json({ message: 'Only the student can add progress updates' });
-    }
-
-    const sanitizedAttachments = Array.isArray(attachmentLinks)
-      ? attachmentLinks.join(', ')
-      : 'None';
-
-    const progressUpdate = `Progress Update: ${progressDetails}\nAttachments: ${sanitizedAttachments}`;
-
-    supervision.notes = supervision.notes
-      ? `${supervision.notes}\n\n${progressUpdate}`
-      : progressUpdate;
-
-    return res.json(supervision);
+    return res.json(updated);
   }
 );
 

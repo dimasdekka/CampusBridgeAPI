@@ -1,14 +1,16 @@
 import { Request, Response, Router } from 'express';
 import { StreamChat } from 'stream-chat';
 import { hashSync, compareSync } from 'bcrypt';
-import { USERS, UserRole } from '../models/user';
+import { UserRole } from '../models/user';
 import dotenv from 'dotenv';
 import { sign } from 'jsonwebtoken';
+import { PrismaClient } from '@prisma/client';
 
 // Load environment variables
 dotenv.config();
 
 const router = Router();
+const prisma = new PrismaClient();
 
 const SALT = process.env.SALT as string;
 const streamApiKey = process.env.STREAM_API_KEY;
@@ -42,9 +44,11 @@ router.post('/register', async (req: Request, res: Response): Promise<any> => {
     });
   }
 
-  const existingUser = USERS.find(
-    (user) => user.email === email || user.id === nim
-  );
+  const existingUser = await prisma.user.findFirst({
+    where: {
+      OR: [{ email: email }, { id: nim }],
+    },
+  });
 
   if (existingUser) {
     return res.status(400).json({
@@ -54,13 +58,14 @@ router.post('/register', async (req: Request, res: Response): Promise<any> => {
 
   try {
     const hashed_password = hashSync(password, SALT);
-    const user = {
-      id: nim,
-      email,
-      hashed_password,
-      role: UserRole.Student,
-    };
-    USERS.push(user);
+    const user = await prisma.user.create({
+      data: {
+        id: nim,
+        email,
+        hashed_password,
+        role: UserRole.Student,
+      },
+    });
 
     await client.upsertUser({
       id: nim,
@@ -69,7 +74,7 @@ router.post('/register', async (req: Request, res: Response): Promise<any> => {
     });
 
     const token = client.createToken(nim);
-    const jwt = sign({ userId: user.id }, process.env.JWT_SECRET!); // <-- Tambahkan ini
+    const jwt = sign({ userId: user.id }, process.env.JWT_SECRET!);
 
     return res.json({
       token,
@@ -91,7 +96,7 @@ router.post('/register', async (req: Request, res: Response): Promise<any> => {
 // Login endpoint
 router.post('/login', async (req: Request, res: Response): Promise<any> => {
   const { email, password } = req.body;
-  const user = USERS.find((user) => user.email === email);
+  const user = await prisma.user.findUnique({ where: { email } });
 
   if (!user || !compareSync(password, user.hashed_password)) {
     return res.status(400).json({
@@ -100,7 +105,6 @@ router.post('/login', async (req: Request, res: Response): Promise<any> => {
   }
 
   const token = client.createToken(user.id);
-
   const jwt = sign({ userId: user.id }, process.env.JWT_SECRET!);
 
   return res.json({
@@ -132,9 +136,11 @@ router.post(
       });
     }
 
-    const existingUser = USERS.find(
-      (user) => user.email === email || user.id === nip
-    );
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [{ email: email }, { id: nip }],
+      },
+    });
 
     if (existingUser) {
       return res.status(400).json({
@@ -144,14 +150,14 @@ router.post(
 
     try {
       const hashed_password = hashSync(password, SALT);
-      const user = {
-        id: nip,
-        email,
-        hashed_password,
-        role: UserRole.Professor,
-      };
-
-      USERS.push(user);
+      const user = await prisma.user.create({
+        data: {
+          id: nip,
+          email,
+          hashed_password,
+          role: UserRole.Professor,
+        },
+      });
 
       await client.upsertUser({
         id: nip,
