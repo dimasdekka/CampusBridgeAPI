@@ -63,10 +63,11 @@ router.get(
       },
     });
 
-    // Sertakan email student
+    // Sertakan email dan nama student
     const supervisionWithStudentInfo = supervisions.map((supervision) => ({
       ...supervision,
       studentEmail: supervision.student?.email,
+      studentName: supervision.student?.name,
     }));
 
     return res.json(supervisionWithStudentInfo);
