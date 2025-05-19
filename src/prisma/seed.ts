@@ -6,7 +6,7 @@ import { hashSync } from 'bcrypt';
 import { StreamChat } from 'stream-chat';
 
 const prisma = new PrismaClient();
-const SALT = '$2b$10$.MftzcPPsR5TUTYRYWGyQu'; // Sesuaikan dengan .env Anda
+const SALT = '$2b$10$.MftzcPPsR5TUTYRYWGyQu';
 
 const streamApiKey = process.env.STREAM_API_KEY!;
 const streamApiSecret = process.env.STREAM_API_SECRET!;

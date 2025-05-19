@@ -66,7 +66,7 @@ router.get(
     // Sertakan email student
     const supervisionWithStudentInfo = supervisions.map((supervision) => ({
       ...supervision,
-      clientEmail: supervision.student?.email,
+      studentEmail: supervision.student?.email,
     }));
 
     return res.json(supervisionWithStudentInfo);

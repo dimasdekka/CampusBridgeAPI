@@ -1,17 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
-import { USERS } from '../models/user';
+import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 
-// Load env
 dotenv.config();
 
 const { JWT_SECRET } = process.env;
+const prisma = new PrismaClient();
 
 declare global {
   namespace Express {
     interface Request {
-      user?: (typeof USERS)[0];
+      user?: any; // user dari Prisma
     }
   }
 }
@@ -31,7 +31,8 @@ export const authenticateToken = async (
   try {
     const { userId } = jwt.verify(token, JWT_SECRET!) as { userId: string };
 
-    const user = USERS.find((u) => u.id === userId);
+    // Cari user di database pakai Prisma
+    const user = await prisma.user.findUnique({ where: { id: userId } });
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });

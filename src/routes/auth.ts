@@ -71,6 +71,7 @@ router.post('/register', async (req: Request, res: Response): Promise<any> => {
       id: nim,
       email,
       name: email,
+      role: user.role,
     });
 
     const token = client.createToken(nim);
