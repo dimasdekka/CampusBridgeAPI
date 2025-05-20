@@ -15,11 +15,27 @@ const client = StreamChat.getInstance(streamApiKey, streamApiSecret);
 async function seedUsers() {
   const users = [
     {
-      id: '221091750079',
+      id: '221091750080',
       email: 'dhimasdekananta@unpam.com',
       hashed_password: hashSync('password123', SALT),
       role: 'student',
       name: 'Dhimas Dekananta',
+      department: 'System Informatics',
+    },
+    {
+      id: '221091750088',
+      email: 'dinakharisma@unpam.com',
+      hashed_password: hashSync('password123', SALT),
+      role: 'student',
+      name: 'Dina Kharisma',
+      department: 'System Informatics',
+    },
+    {
+      id: '221091750092',
+      email: 'wahyukhoirul@unpam.com',
+      hashed_password: hashSync('password123', SALT),
+      role: 'student',
+      name: 'Wahyu Khoirul Rizal',
       department: 'System Informatics',
     },
     {
@@ -50,7 +66,7 @@ async function seedSupervisions() {
   const supervisions = [
     {
       id: '9j5ljw1dh',
-      studentId: '221091750079',
+      studentId: '221091750080',
       professorId: '0000001',
       dateTime: new Date('2025-03-11T13:15:29.364Z'),
       status: 'Pending',
@@ -58,7 +74,7 @@ async function seedSupervisions() {
     },
     {
       id: '9j51ga1dh',
-      studentId: '221091750079',
+      studentId: '221091750080',
       professorId: '0000001',
       dateTime: new Date('2025-03-18T13:15:29.364Z'),
       status: 'Pending',
@@ -71,6 +87,8 @@ async function seedSupervisions() {
 }
 
 async function main() {
+  await prisma.supervision.deleteMany();
+  await prisma.user.deleteMany();
   await seedUsers();
   await seedSupervisions();
 }
